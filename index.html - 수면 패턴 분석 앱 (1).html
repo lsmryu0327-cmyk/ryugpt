@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1226">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>수면 패턴 분석</title>
+<style>
+:root{
+  --bg:#0f1226;--card:#191d3a;--card2:#222749;--text:#eef0ff;--muted:#9aa0c8;
+  --accent:#7c8cff;--good:#4ade80;--info:#60a5fa;--warn:#fbbf24;--bad:#f87171;--line:#2d335e;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+  background:radial-gradient(1200px 600px at 80% -10%,#262c63 0,transparent 60%),var(--bg);color:var(--text);min-height:100vh}
+header{padding:28px 20px 8px;text-align:center}
+header h1{margin:0;font-size:1.8rem}
+header p{margin:6px 0 0;color:var(--muted);font-size:.95rem}
+.wrap{max-width:1000px;margin:0 auto;padding:0 14px 60px}
+.tabs{display:flex;gap:6px;margin:18px 0 10px;background:var(--card);padding:6px;border-radius:14px;position:sticky;top:8px;z-index:5;box-shadow:0 6px 20px #0006}
+.tabs button{flex:1;border:0;background:transparent;color:var(--muted);padding:11px 6px;border-radius:10px;font-size:.95rem;cursor:pointer;font-weight:600}
+.tabs button.on{background:var(--accent);color:#fff}
+.settings{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:flex-end;margin:6px 2px 14px;color:var(--muted);font-size:.88rem}
+select,input[type=datetime-local]{background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.92rem;width:100%}
+.settings select{width:auto}
+.tab{display:none}.tab.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px}
+.card h2,.card h3{margin:0 0 10px}
+.card h2{font-size:1.15rem}.card h3{font-size:1.02rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+.muted{color:var(--muted);font-size:.9rem}
+.clock{font-size:2.6rem;font-weight:700;text-align:center;margin:10px 0;font-variant-numeric:tabular-nums;letter-spacing:1px}
+.btn{border:0;border-radius:12px;padding:11px 16px;font-size:.95rem;font-weight:700;cursor:pointer;color:#fff;background:var(--card2)}
+.btn.primary{background:var(--accent)}.btn.warn{background:#f59e0b;color:#1b1300}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.btn.danger{background:#b4343f}
+.btn.big{width:100%;padding:15px;font-size:1.05rem;margin-top:10px}
+.btn:hover{filter:brightness(1.1)}
+.f{display:block;margin-bottom:10px}.f>span{display:block;font-size:.82rem;color:var(--muted);margin-bottom:4px}
+.envgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+@media(max-width:560px){.envgrid{grid-template-columns:1fr}}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:4px 0 8px}
+@media(max-width:560px){.checks{grid-template-columns:1fr}}
+.chk{font-size:.88rem;color:var(--text);background:var(--card2);padding:8px 10px;border-radius:8px;cursor:pointer}
+.rating{display:flex;gap:8px;margin:8px 0}
+.rating button{flex:1;font-size:1.6rem;padding:8px 0;border-radius:12px;border:2px solid transparent;background:var(--card2);cursor:pointer}
+.rating button.sel{border-color:var(--accent);background:#2f3670}
+.chip{display:inline-block;background:var(--card2);border-radius:20px;padding:3px 10px;font-size:.78rem;margin:2px 3px 2px 0;color:#d6d9ff}
+.summary{display:grid;grid-template-columns:1.1fr repeat(3,1fr);gap:12px;margin-bottom:14px}
+@media(max-width:860px){.summary{grid-template-columns:1fr 1fr}}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+.stat .l{color:var(--muted);font-size:.8rem}.stat .v{font-size:1.45rem;font-weight:700;margin:4px 0}.stat .s{font-size:.8rem;color:var(--muted)}
+.scorecard{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.ring{--p:0;--c:var(--accent);width:110px;height:110px;border-radius:50%;display:grid;place-items:center;
+  background:conic-gradient(var(--c) calc(var(--p)*1%),#2d335e 0)}
+.ring span{width:86px;height:86px;border-radius:50%;background:var(--card);display:grid;place-items:center;font-size:2rem;font-weight:800}
+.chartwrap{width:100%}canvas{display:block}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.78rem;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}
+.bar{background:#2d335e;border-radius:6px;height:8px;overflow:hidden;margin:4px 0}.bar>div{height:100%;border-radius:6px}
+.frow{margin-bottom:12px;font-size:.88rem}.frow .top{display:flex;justify-content:space-between;gap:8px}.frow small{color:var(--muted)}
+.lv{display:inline-block;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:12px;margin-right:6px;color:#111}
+.lv.good{background:var(--good)}.lv.info{background:var(--info)}.lv.warn{background:var(--warn)}.lv.bad{background:var(--bad)}
+.expert{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.avatar{font-size:1.8rem;width:50px;height:50px;border-radius:50%;background:var(--card2);display:grid;place-items:center;flex:none}
+.expert b{display:block}.expert small{color:var(--muted)}
+.fb{background:var(--card2);border-left:4px solid var(--info);border-radius:10px;padding:12px 14px;margin:10px 0}
+.fb.good{border-color:var(--good)}.fb.warn{border-color:var(--warn)}.fb.bad{border-color:var(--bad)}
+.fb h4{margin:0 0 6px;font-size:.98rem}.fb p{margin:0 0 6px;font-size:.9rem;line-height:1.55;color:#d9dcff}
+.fb ul{margin:4px 0 0;padding-left:18px;font-size:.86rem;color:#bfc4f0;line-height:1.55}
+.plan{background:linear-gradient(135deg,#2a2f69,#1f2350);border:1px solid #3b4290}
+.plan ol{margin:8px 0 0;padding-left:20px;line-height:1.7;font-size:.92rem}
+.note{font-size:.78rem;color:var(--muted);line-height:1.5;margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th,td{padding:9px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:.8rem}
+.tablewrap{overflow-x:auto}
+.empty{text-align:center;padding:40px 14px;color:var(--muted)}
+.empty .em{font-size:2.6rem}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(80px);background:#000d;color:#fff;padding:11px 18px;border-radius:24px;font-size:.9rem;transition:.3s;z-index:20;pointer-events:none;max-width:90vw}
+#toast.show{transform:translateX(-50%) translateY(0)}
+/* ===================== 반응형: 휴대폰 / 태블릿 / PC ===================== */
+html{-webkit-text-size-adjust:100%}
+button,select,input,label{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+canvas{max-width:100%;height:auto}
+input[type=datetime-local]{min-width:0;max-width:100%}
+.wrap{padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
+header{padding-top:max(28px,calc(env(safe-area-inset-top) + 14px))}
+.tabs button .ic{margin-right:4px}
+@media(hover:none){.btn:hover{filter:none}}
+
+/* --- 태블릿 --- */
+[data-device="tablet"]{font-size:17px}
+[data-device="tablet"] .wrap{max-width:860px}
+[data-device="tablet"] .card{padding:22px}
+[data-device="tablet"] .tabs button{padding:14px 6px;font-size:1rem}
+[data-device="tablet"] .btn{min-height:48px}
+[data-device="tablet"] select,[data-device="tablet"] input[type=datetime-local]{font-size:16px;min-height:44px}
+[data-device="tablet"] .chk{padding:12px 12px}
+[data-device="tablet"] .rating button{min-height:58px}
+[data-device="tablet"] .grid2{grid-template-columns:1fr 1fr}
+[data-device="tablet"] .envgrid{grid-template-columns:repeat(3,1fr)}
+[data-device="tablet"] .checks{grid-template-columns:1fr 1fr}
+[data-device="tablet"] .summary{grid-template-columns:1.1fr repeat(3,1fr)}
+
+/* --- 휴대폰 --- */
+[data-device="phone"] header{padding:max(18px,calc(env(safe-area-inset-top) + 8px)) 14px 4px}
+[data-device="phone"] header h1{font-size:1.4rem}
+[data-device="phone"] header p{font-size:.82rem}
+[data-device="phone"] .wrap{max-width:480px;padding-bottom:calc(110px + env(safe-area-inset-bottom));padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
+[data-device="phone"] .card{padding:14px;border-radius:14px}
+[data-device="phone"] .tabs{position:fixed;top:auto;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;margin:0;gap:2px;border-radius:18px 18px 0 0;border:1px solid var(--line);border-bottom:0;padding:6px 6px calc(6px + env(safe-area-inset-bottom));box-shadow:0 -6px 22px #000a;z-index:30}
+[data-device="phone"] .tabs button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 2px;font-size:.72rem;min-height:52px}
+[data-device="phone"] .tabs button .ic{font-size:1.3rem;line-height:1;margin:0}
+[data-device="phone"] .settings{display:flex;gap:8px;justify-content:stretch;margin:12px 0}
+[data-device="phone"] .settings label{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;font-size:.78rem}
+[data-device="phone"] .settings select{width:100%}
+[data-device="phone"] select,[data-device="phone"] input[type=datetime-local]{font-size:16px;min-height:46px}
+[data-device="phone"] .btn{min-height:48px}
+[data-device="phone"] .btn.big{min-height:54px}
+[data-device="phone"] .row .btn{flex:1 1 auto}
+[data-device="phone"] .clock{font-size:2.3rem}
+[data-device="phone"] .grid2,[data-device="phone"] .envgrid,[data-device="phone"] .checks{grid-template-columns:1fr}
+[data-device="phone"] .chk{padding:13px 12px;font-size:.92rem}
+[data-device="phone"] .rating{gap:6px}
+[data-device="phone"] .rating button{min-height:54px;font-size:1.5rem}
+[data-device="phone"] .summary{grid-template-columns:1fr 1fr;gap:10px}
+[data-device="phone"] .summary>.scorecard{grid-column:1/-1}
+[data-device="phone"] .stat{padding:12px}
+[data-device="phone"] .stat .v{font-size:1.2rem}
+[data-device="phone"] .expert .avatar{width:44px;height:44px;font-size:1.5rem}
+[data-device="phone"] .plan ol{padding-left:18px}
+[data-device="phone"] #toast{bottom:calc(88px + env(safe-area-inset-bottom))}
+/* 휴대폰: 기록 표 → 카드 목록 */
+[data-device="phone"] table.hist,[data-device="phone"] table.hist tbody,[data-device="phone"] table.hist tr,[data-device="phone"] table.hist td{display:block;width:100%}
+[data-device="phone"] table.hist thead{display:none}
+[data-device="phone"] table.hist tr{background:var(--card2);border-radius:12px;padding:8px 12px;margin-bottom:10px}
+[data-device="phone"] table.hist td{display:flex;justify-content:space-between;gap:12px;border:0;padding:5px 0;text-align:right}
+[data-device="phone"] table.hist td::before{content:attr(data-label);color:var(--muted);font-size:.78rem;text-align:left;flex:none}
+[data-device="phone"] table.hist td:last-child{justify-content:flex-end}
+[data-device="phone"] table.hist td:last-child::before{content:none}
+/* 가로 모드(낮은 화면) */
+@media(orientation:landscape) and (max-height:480px){
+  [data-device="phone"] .tabs button{flex-direction:row;justify-content:center;gap:6px;min-height:40px;font-size:.8rem}
+  [data-device="phone"] .tabs button .ic{font-size:1.05rem}
+  [data-device="phone"] .wrap{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
+  [data-device="phone"] .grid2{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>🌙 수면 패턴 분석</h1>
+  <p>수면 시간을 측정하고 · 패턴을 분석하고 · 전문가 피드백을 받아보세요</p>
+</header>
+<div class="wrap">
+  <nav class="tabs">
+    <button data-tab="measure"><span class="ic">⏱</span><span class="lb">측정</span></button>
+    <button data-tab="analysis"><span class="ic">📊</span><span class="lb">분석</span></button>
+    <button data-tab="feedback"><span class="ic">🩺</span><span class="lb">전문가 피드백</span></button>
+    <button data-tab="history"><span class="ic">🗂</span><span class="lb">기록</span></button>
+  </nav>
+  <div class="settings">
+    <label>분석 기간 <select id="period">
+      <option value="7">최근 7일</option><option value="14">최근 14일</option>
+      <option value="30">최근 30일</option><option value="0">전체</option></select></label>
+    <label>목표 수면 <select id="goal"></select></label>
+    <label>화면 모드 <select id="device">
+      <option value="auto">자동 감지</option><option value="phone">📱 휴대폰</option>
+      <option value="tablet">📲 태블릿</option><option value="desktop">💻 PC</option></select></label>
+  </div>
+  <section id="tab-measure" class="tab"></section>
+  <section id="tab-analysis" class="tab"></section>
+  <section id="tab-feedback" class="tab"></section>
+  <section id="tab-history" class="tab"></section>
+</div>
+<div id="toast"></div>
+
+<script>
+/* ===================== 유틸 / 저장소 ===================== */
+const $ = (s, r = document) => r.querySelector(s);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('sleepapp.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('sleepapp.' + k, JSON.stringify(v)); } catch (e) {} }
+};
+let records  = store.get('records', []);
+let active   = store.get('active', null);          // {start, env, end?}
+let settings = Object.assign({ goal: 8, period: 14, device: 'auto' }, store.get('settings', {}));
+let currentTab = 'measure';
+let lastRs = [];
+
+const H = 3.6e6;
+const pad = n => String(n).padStart(2, '0');
+const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+const sd  = a => { if (a.length < 2) return 0; const m = avg(a); return Math.sqrt(avg(a.map(x => (x - m) ** 2))); };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const dur   = r => (r.end - r.start) / H;
+function bedH(r) { const d = new Date(r.start); let h = d.getHours() + d.getMinutes() / 60; if (h < 15) h += 24; return h; }
+function wakeH(r) { const d = new Date(r.end); return d.getHours() + d.getMinutes() / 60; }
+function fmtClock(h) { h = ((h % 24) + 24) % 24; let hh = Math.floor(h), mm = Math.round((h - hh) * 60); if (mm === 60) { hh = (hh + 1) % 24; mm = 0; } return pad(hh) + ':' + pad(mm); }
+function fmtDur(h) { const m = Math.round(h * 60); return Math.floor(m / 60) + '시간 ' + pad(m % 60) + '분'; }
+const hms = ms => { const s = Math.floor(ms / 1000); return pad(Math.floor(s / 3600)) + ':' + pad(Math.floor(s % 3600 / 60)) + ':' + pad(s % 60); };
+const md  = t => { const d = new Date(t); return (d.getMonth() + 1) + '/' + d.getDate(); };
+const fmtDT = t => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+function toLocalInput(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2400); }
+const saveRecords = () => store.set('records', records);
+
+/* ===================== 환경 요인 정의 ===================== */
+const ENV = {
+  light: { label: '수면 중 조명', def: 'dark', opts: [['dark', '완전 소등'], ['dim', '약한 취침등'], ['lamp', '스탠드/방 불 켬'], ['screen', 'TV·스마트폰 켠 채']] },
+  noise: { label: '소음', def: 'quiet', opts: [['quiet', '조용함'], ['mid', '약간 있음'], ['loud', '시끄러움']] },
+  temp:  { label: '실내 온도', def: 'ok', opts: [['cold', '추움'], ['ok', '적당'], ['hot', '더움']] }
+};
+const HABITS = [
+  ['screenBefore', '📱 취침 1시간 전 스마트폰 사용'],
+  ['caffeine', '☕ 오후 늦게 카페인 섭취'],
+  ['alcohol', '🍺 음주'],
+  ['lateMeal', '🍜 취침 3시간 내 식사·야식']
+];
+const FACTORS = [
+  { key: 'lamp',   label: '💡 스탠드/방 불 켜고 수면', test: e => e.light === 'lamp' },
+  { key: 'tv',     label: '📺 TV·스마트폰 켠 채 수면', test: e => e.light === 'screen' },
+  { key: 'noise',  label: '🔊 소음 있음',              test: e => e.noise === 'mid' || e.noise === 'loud' },
+  { key: 'hot',    label: '🔥 실내가 더움',            test: e => e.temp === 'hot' },
+  { key: 'cold',   label: '🥶 실내가 추움',            test: e => e.temp === 'cold' },
+  { key: 'screenBefore', label: '📱 취침 전 스마트폰', test: e => !!e.screenBefore },
+  { key: 'caffeine', label: '☕ 늦은 카페인',          test: e => !!e.caffeine },
+  { key: 'alcohol',  label: '🍺 음주',                 test: e => !!e.alcohol },
+  { key: 'lateMeal', label: '🍜 야식',                 test: e => !!e.lateMeal }
+];
+function envFields(p) {
+  const sel = k => `<label class="f"><span>${ENV[k].label}</span><select id="${p}-${k}">${ENV[k].opts.map(([v, t]) =>
+    `<option value="${v}"${v === ENV[k].def ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`;
+  return `<div class="envgrid">${Object.keys(ENV).map(sel).join('')}</div>
+    <div class="checks">${HABITS.map(([k, t]) => `<label class="chk"><input type="checkbox" id="${p}-${k}"> ${t}</label>`).join('')}</div>`;
+}
+function readEnv(p) {
+  const o = {};
+  for (const k in ENV) o[k] = $(`#${p}-${k}`).value;
+  HABITS.forEach(([k]) => o[k] = $(`#${p}-${k}`).checked);
+  return o;
+}
+function envChips(e) {
+  e = e || {}; const c = [];
+  if (e.light === 'dark') c.push('🌑 소등'); if (e.light === 'dim') c.push('🕯 취침등');
+  if (e.light === 'lamp') c.push('💡 조명 켬'); if (e.light === 'screen') c.push('📺 화면 켬');
+  if (e.noise === 'mid') c.push('🔊 약간 소음'); if (e.noise === 'loud') c.push('🔊 시끄러움');
+  if (e.temp === 'hot') c.push('🔥 더움'); if (e.temp === 'cold') c.push('🥶 추움');
+  if (e.screenBefore) c.push('📱'); if (e.caffeine) c.push('☕'); if (e.alcohol) c.push('🍺'); if (e.lateMeal) c.push('🍜');
+  return c.map(x => `<span class="chip">${x}</span>`).join('');
+}
+const RATE_EMOJI = ['😫', '😕', '😐', '🙂', '😄'], RATE_TXT = ['매우 나쁨', '나쁨', '보통', '좋음', '매우 좋음'];
+const ratingHTML = id => `<div class="rating" id="${id}" data-value="0">${RATE_EMOJI.map((e, i) =>
+  `<button type="button" data-rate="${i + 1}" title="${RATE_TXT[i]}">${e}</button>`).join('')}</div>`;
+
+/* ===================== 기록 추가 ===================== */
+function addRecord(start, end, quality, env) {
+  const d = (end - start) / H;
+  if (!(end > start)) { toast('기상 시각이 취침 시각보다 늦어야 해요.'); return false; }
+  if (d > 20) { toast('수면 시간이 20시간을 넘을 수 없어요.'); return false; }
+  if (d < 0.25) { toast('15분 미만은 기록하지 않아요.'); return false; }
+  records.push({ id: Date.now() + Math.floor(Math.random() * 1000), start, end, quality: quality || null, env });
+  records.sort((a, b) => a.end - b.end);
+  saveRecords();
+  return true;
+}
+
+/* ===================== 분석 ===================== */
+function envPenalty(e) {
+  e = e || {}; let p = 0;
+  if (e.light === 'lamp') p += .35; if (e.light === 'screen') p += .3; if (e.light === 'dim') p += .05;
+  if (e.noise === 'mid') p += .1; if (e.noise === 'loud') p += .3;
+  if (e.temp === 'hot') p += .2; if (e.temp === 'cold') p += .1;
+  if (e.screenBefore) p += .1; if (e.caffeine) p += .1; if (e.alcohol) p += .15; if (e.lateMeal) p += .1;
+  return Math.min(1, p);
+}
+function durScore(d) { if (d >= 7 && d <= 9) return 1; if (d < 7) return clamp((d - 4) / 3, 0, 1); return clamp(1 - (d - 9) / 3, 0, 1); }
+function periodRecords() {
+  let rs = [...records].sort((a, b) => a.end - b.end);
+  if (settings.period > 0) { const cut = Date.now() - settings.period * 864e5; rs = rs.filter(r => r.end >= cut); }
+  return rs;
+}
+function analyze(rs) {
+  const n = rs.length, goal = settings.goal;
+  const durs = rs.map(dur), beds = rs.map(bedH), wakes = rs.map(wakeH);
+  const qs = rs.filter(r => r.quality).map(r => r.quality);
+  const qa = g => { const x = g.filter(r => r.quality).map(r => r.quality); return x.length >= 2 ? avg(x) : null; };
+  const a = { n, durs, goal, avgDur: avg(durs), avgBed: avg(beds), avgWake: avg(wakes),
+    sdBed: sd(beds) * 60, sdWake: sd(wakes) * 60, avgQ: qs.length ? avg(qs) : null,
+    debt: durs.reduce((s, d) => s + Math.max(0, goal - d), 0),
+    shortNights: durs.filter(d => d < 6).length };
+  a.factors = FACTORS.map(f => {
+    const w = rs.filter(r => f.test(r.env || {})), wo = rs.filter(r => !f.test(r.env || {}));
+    return { ...f, count: w.length, pct: w.length / n, qWith: qa(w), qWithout: qa(wo) };
+  });
+  a.F = Object.fromEntries(a.factors.map(f => [f.key, f]));
+  // 평일/주말
+  const isWE = r => { const g = new Date(r.end).getDay(); return g === 0 || g === 6; };
+  const we = rs.filter(isWE), wd = rs.filter(r => !isWE(r));
+  const mid = r => bedH(r) + dur(r) / 2;
+  a.wd = wd.length ? { n: wd.length, dur: avg(wd.map(dur)), bed: avg(wd.map(bedH)), mid: avg(wd.map(mid)) } : null;
+  a.we = we.length ? { n: we.length, dur: avg(we.map(dur)), bed: avg(we.map(bedH)), mid: avg(we.map(mid)) } : null;
+  a.sjl = (a.wd && a.we) ? Math.abs(a.we.mid - a.wd.mid) : null;
+  // 점수
+  const sDur = avg(durs.map(durScore));
+  const sReg = clamp(1 - (a.sdBed - 30) / 90, 0, 1);
+  const sQual = a.avgQ ? (a.avgQ - 1) / 4 : 0.5;
+  const sEnv = avg(rs.map(r => 1 - envPenalty(r.env)));
+  a.parts = { dur: Math.round(sDur * 40), reg: Math.round(sReg * 25), qual: Math.round(sQual * 20), env: Math.round(sEnv * 15) };
+  a.score = a.parts.dur + a.parts.reg + a.parts.qual + a.parts.env;
+  return a;
+}
+function gradeOf(s) {
+  if (s >= 85) return ['매우 좋음', 'var(--good)'];
+  if (s >= 70) return ['좋음', '#86efac'];
+  if (s >= 55) return ['보통', 'var(--warn)'];
+  if (s >= 40) return ['주의', '#fb923c'];
+  return ['개선 필요', 'var(--bad)'];
+}
+
+/* ===================== 전문가 피드백 규칙 ===================== */
+const it = (level, title, text, tips = []) => ({ level, title, text, tips });
+const sev = (p, w, b) => p >= b ? 'bad' : p >= w ? 'warn' : null;
+const pc = p => Math.round(p * 100);
+
+function doctorFb(a) {
+  const items = [], d = a.avgDur, dd = fmtDur(d);
+  if (d < 5) items.push(it('bad', '수면 시간이 매우 부족합니다', `평균 수면 시간이 ${dd}로 성인 권장량(7~9시간)보다 2시간 이상 적습니다. 이런 상태가 이어지면 집중력·기억력 저하, 기분 변화, 면역력 저하, 대사 건강 악화 위험이 커집니다.`, ['오늘부터 취침 시각을 30분씩 앞당겨 최소 6시간 이상 확보하기', '낮 졸음이 심하면 운전 등 위험 활동 주의', '2주 이상 지속되면 수면클리닉 상담 권장']));
+  else if (d < 6) items.push(it('bad', '수면 시간이 부족합니다', `평균 ${dd}로 권장 수면 시간(7~9시간)에 크게 못 미칩니다. 부족한 수면은 주말 몰아자기로 완전히 회복되지 않습니다.`, ['평일 취침 시각을 먼저 고정하기', '취침 전 1시간은 업무·SNS 대신 이완 활동하기']));
+  else if (d < 7) items.push(it('warn', '권장 수면 시간에 조금 못 미칩니다', `평균 ${dd}입니다. 7시간 이상을 목표로 15~30분만 더 일찍 자도 낮 시간 컨디션이 눈에 띄게 달라질 수 있어요.`, ['취침 시각을 주당 15분씩 앞당기기']));
+  else if (d <= 9) items.push(it('good', '수면 시간이 적정 범위입니다', `평균 ${dd}로 성인 권장 범위(7~9시간)에 들어옵니다. 지금의 수면 확보 습관을 유지하세요.`));
+  else if (d <= 10) items.push(it('warn', '수면 시간이 다소 깁니다', `평균 ${dd}로 권장 범위보다 깁니다. 오래 자는데도 개운하지 않다면 수면의 효율이나 질이 낮다는 신호일 수 있어요.`, ['수면 환경(조명·소음·온도) 점검하기', '기상 시각을 일정하게 고정하기']));
+  else items.push(it('bad', '수면 시간이 지나치게 깁니다', `평균 ${dd}입니다. 지나치게 긴 수면이 계속되면 수면무호흡, 우울감, 약물 영향 등 다른 원인이 있을 수 있습니다.`, ['증상이 2주 이상 지속되면 진료 상담 권장', '아침 햇빛을 쬐며 기상 시각 고정하기']));
+  if (a.debt >= 4) items.push(it('warn', `누적 수면 부채 약 ${a.debt.toFixed(1)}시간`, `목표 ${a.goal}시간 기준으로 부족분이 쌓였습니다. 주말 늦잠으로 한꺼번에 갚으면 생체리듬이 흔들리므로, 평일에 조금씩 일찍 자는 방식이 좋습니다.`, ['평일 15~30분 일찍 자기', '주말 늦잠은 평소보다 1시간 이내로 제한']));
+  if (d >= 7 && a.shortNights >= 2) items.push(it('info', `6시간 미만 수면일 ${a.shortNights}일`, '평균은 괜찮지만 유독 짧게 잔 날이 있습니다. 짧은 날 다음 날의 졸음·집중력을 살펴보세요.'));
+  if (a.n >= 6) {
+    const half = Math.floor(a.n / 2), diff = avg(a.durs.slice(-half)) - avg(a.durs.slice(0, half));
+    if (diff >= .75) items.push(it('good', '최근 수면 시간이 늘고 있어요', `기간 초반보다 최근 수면이 평균 ${fmtDur(diff)} 늘었습니다. 좋은 흐름입니다.`));
+    else if (diff <= -.75) items.push(it('warn', '최근 수면 시간이 줄고 있어요', `기간 초반보다 최근 수면이 평균 ${fmtDur(-diff)} 줄었습니다. 원인(업무·스트레스·늦은 활동)을 점검해 보세요.`));
+  }
+  return items;
+}
+function chronoFb(a) {
+  const items = [], s = Math.round(a.sdBed);
+  if (a.sdBed > 90) items.push(it('bad', '취침 시각이 매우 불규칙합니다', `취침 시각의 편차가 약 ${s}분입니다. 불규칙한 수면은 생체시계를 혼란스럽게 해 잠들기 어려움과 낮 피로를 키웁니다.`, ['취침·기상 시각을 ±30분 이내로 고정하기', '알람을 "기상"뿐 아니라 "취침 준비"용으로도 설정하기']));
+  else if (a.sdBed > 60) items.push(it('warn', '취침 시각이 다소 불규칙합니다', `취침 시각 편차가 약 ${s}분입니다. 일정한 취침 시각은 수면의 질을 높이는 가장 간단한 방법입니다.`, ['요일과 관계없이 비슷한 시각에 잠자리에 들기']));
+  else if (a.sdBed <= 30) items.push(it('good', '취침 시각이 규칙적입니다', `취침 시각 편차가 약 ${s}분으로 생체리듬이 안정적입니다.`));
+  else items.push(it('info', '취침 규칙성은 보통입니다', `취침 시각 편차가 약 ${s}분입니다. 30분 이내로 줄이면 더 좋아요.`));
+  if (a.avgBed >= 25) items.push(it('warn', '평균 취침 시각이 새벽 1시 이후입니다', `평균 취침 ${fmtClock(a.avgBed)}, 기상 ${fmtClock(a.avgWake)}입니다. 늦은 취침은 아침 일정과 충돌해 수면 시간이 줄기 쉽고 리듬이 뒤로 밀리는 '야행성' 패턴을 굳힙니다.`, ['기상 후 30분 안에 햇빛 쬐기', '취침 시각을 사흘마다 15분씩 앞당기기', '저녁 시간 밝은 화면·조명 줄이기']));
+  if (a.sjl !== null) {
+    if (a.sjl >= 1.5) items.push(it('warn', `사회적 시차 약 ${a.sjl.toFixed(1)}시간`, '평일과 주말의 수면 중간 시각 차이가 큽니다. 매주 시차를 오가는 것과 같아 월요일 피로가 심해질 수 있어요.', ['주말 기상 시각을 평일 +1시간 이내로 제한', '주말 늦잠 대신 낮 20분 이내 낮잠 활용']));
+    else if (a.sjl >= 1) items.push(it('info', `사회적 시차 약 ${a.sjl.toFixed(1)}시간`, '평일·주말 수면 시각 차이가 약간 있습니다. 1시간 이내로 줄이면 좋습니다.'));
+  }
+  if (a.sdWake > 75) items.push(it('warn', '기상 시각이 들쭉날쭉합니다', `기상 시각 편차가 약 ${Math.round(a.sdWake)}분입니다. 기상 시각이 고정되어야 밤에 졸음이 일정하게 찾아옵니다.`, ['휴일에도 같은 시각 전후로 기상하기']));
+  return items;
+}
+function envFb(a) {
+  const items = [], F = a.F, enough = a.avgDur >= 7;
+  const cmp = f => (f.qWith && f.qWithout) ? ` (이 요인이 있던 날 수면의 질 평균 ${f.qWith.toFixed(1)}점 vs 없던 날 ${f.qWithout.toFixed(1)}점)` : '';
+  let l = sev(F.lamp.pct, .3, .6);
+  if (l) items.push(it(l, `조명을 켜고 자는 날이 많아요 (${pc(F.lamp.pct)}%)`, `${enough ? '수면 시간은 충분하지만 ' : ''}스탠드·방 불을 켠 채 잠든 날이 ${F.lamp.count}일입니다. 눈을 감아도 빛은 멜라토닌 분비를 억제하고 얕은 수면을 늘려 수면의 질을 떨어뜨립니다.${cmp(F.lamp)} 수면 환경의 변화가 필요합니다.`, ['스탠드·방 조명은 완전히 끄고 침실을 최대한 어둡게 만들기', '암막 커튼 또는 수면 안대 사용', '화장실 이동용이면 어두운 주황빛 취침등으로 대체', '잠들기 1시간 전부터 조명 밝기 낮추기']));
+  else if (F.lamp.count > 0) items.push(it('info', `조명을 켜고 잔 날이 ${F.lamp.count}일 있어요`, '가끔이라도 밝은 조명 아래 잠들면 그날의 깊은 수면이 줄어듭니다. 가능하면 소등하고 주무세요.'));
+  l = sev(F.tv.pct, .2, .5);
+  if (l) items.push(it(l, `TV·스마트폰을 켠 채 잠드는 날이 많아요 (${pc(F.tv.pct)}%)`, `화면의 푸른빛과 소리는 뇌를 계속 각성시키고 밤중 자주 깨게 만듭니다.${cmp(F.tv)}`, ['타이머를 설정해 자동으로 꺼지게 하기', '스마트폰은 침대에서 손이 닿지 않는 곳에 충전', '잠들기 어려우면 TV 대신 잔잔한 오디오·백색소음 활용']));
+  l = sev(F.noise.pct, .3, .6);
+  if (l) items.push(it(l, `소음 환경이 수면을 방해하고 있어요 (${pc(F.noise.pct)}%)`, `소음은 의식하지 못해도 수면 단계를 얕게 만듭니다.${cmp(F.noise)}`, ['귀마개 또는 백색소음기 사용', '창문 틈새 보완, 침대 위치 조정']));
+  l = sev(F.hot.pct, .3, .6);
+  if (l) items.push(it(l, `실내가 더운 날이 많아요 (${pc(F.hot.pct)}%)`, `수면 중에는 체온이 내려가야 깊이 잘 수 있습니다. 침실이 덥면 중간에 깨기 쉽습니다.${cmp(F.hot)}`, ['침실 온도 18~20℃ 전후로 유지', '통기성 좋은 침구·잠옷 사용', '취침 1~2시간 전 미지근한 샤워']));
+  l = sev(F.cold.pct, .4, .7);
+  if (l) items.push(it(l, `실내가 추운 날이 많아요 (${pc(F.cold.pct)}%)`, '너무 추우면 몸이 긴장해 잠들기 어렵고 자주 깹니다.', ['침구 보온 보완', '발을 따뜻하게 하고 잠들기']));
+  if (!items.length) items.push(it('good', '수면 환경이 안정적입니다', '조명·소음·온도 모두 큰 문제가 보이지 않습니다. 지금의 어둡고 조용한 환경을 유지하세요.'));
+  return items;
+}
+function lifeFb(a) {
+  const items = [], F = a.F;
+  let l = sev(F.screenBefore.pct, .5, .8);
+  if (l) items.push(it(l, `취침 전 스마트폰 사용이 잦아요 (${pc(F.screenBefore.pct)}%)`, '잠들기 직전 화면 사용은 블루라이트와 콘텐츠 자극으로 입면을 늦춥니다.', ['취침 1시간 전 "화면 끄기" 루틴 만들기', '불가피하면 야간모드·밝기 최소화', '독서·스트레칭·따뜻한 샤워로 대체']));
+  l = sev(F.caffeine.pct, .3, .6);
+  if (l) items.push(it(l, `늦은 카페인 섭취가 많아요 (${pc(F.caffeine.pct)}%)`, '카페인은 체내에서 5~7시간 이상 작용합니다. 오후 늦게 마시면 깊은 수면이 줄 수 있어요.', ['카페인은 오후 2시 이전까지만', '오후에는 디카페인·보리차로 대체']));
+  l = sev(F.alcohol.pct, .2, .5);
+  if (l) items.push(it(l, `음주 후 수면이 잦아요 (${pc(F.alcohol.pct)}%)`, '술은 잠들기는 쉽게 해도 새벽에 자주 깨고 REM 수면을 줄여 수면의 질을 떨어뜨립니다.', ['취침 3~4시간 전에는 음주 피하기', '음주한 날은 일찍 자서 보충하기']));
+  l = sev(F.lateMeal.pct, .3, .6);
+  if (l) items.push(it(l, `취침 직전 식사·야식이 많아요 (${pc(F.lateMeal.pct)}%)`, '자기 전 식사는 소화 활동과 역류로 수면을 얕게 만듭니다.', ['마지막 식사는 취침 3시간 전까지', '배고프면 따뜻한 우유·바나나 같은 가벼운 간식']));
+  if (!items.length) items.push(it('good', '수면 전 생활습관이 양호합니다', '카페인·음주·야식·취침 전 스마트폰 사용이 크게 두드러지지 않습니다. 좋은 습관입니다.'));
+  return items;
+}
+function cbtFb(a) {
+  const items = [], q = a.avgQ, d = a.avgDur;
+  if (q === null) { items.push(it('info', '수면의 질 평가가 없어요', '기상 후 컨디션 평가를 남기면 시간 외의 "질"까지 분석할 수 있습니다.')); return items; }
+  if (q < 3 && d >= 7) items.push(it('bad', '충분히 자는데도 개운하지 않아요', `평균 ${fmtDur(d)}를 자지만 아침 컨디션 평균이 ${q.toFixed(1)}점입니다. 시간이 아니라 수면의 '질'에 문제가 있을 가능성이 큽니다.`, ['수면 환경(조명·소음·온도)과 취침 전 습관 우선 점검', '코골이·수면 중 숨막힘·아침 두통이 있으면 수면무호흡 검사 상담', '스트레스·불안이 크다면 이완호흡·명상 시도']));
+  else if (q < 3) items.push(it('bad', '수면 부족과 낮은 만족도가 함께 나타나요', `평균 ${fmtDur(d)} 수면에 컨디션 ${q.toFixed(1)}점입니다. 잠자리에서의 각성(걱정, 시계 보기)이 원인일 수 있어요.`, ['침대는 잠자는 용도로만 사용하기', '20분 이상 잠이 안 오면 일어나 조용한 활동 후 졸릴 때 다시 눕기', '걱정거리는 자기 전 메모지에 적어 두기']));
+  else if (q < 4) items.push(it('info', '수면의 질은 보통 수준입니다', `아침 컨디션 평균 ${q.toFixed(1)}점입니다. 환경과 습관을 한두 가지만 개선해도 점수가 오를 여지가 있어요.`));
+  else items.push(it('good', '아침 컨디션이 좋습니다', `컨디션 평균 ${q.toFixed(1)}점으로 수면에 대한 만족도가 높습니다.`));
+  if (d > 9 && q < 3.5) items.push(it('warn', '침대에 오래 머무는 시간이 질을 낮출 수 있어요', '실제 잠든 시간보다 침대에서 보내는 시간이 길면 수면이 얕아지고 분절됩니다(수면효율 저하).', ['기상 시각을 고정하고 늦잠 줄이기', '졸리지 않을 때는 침대에 눕지 않기']));
+  return items;
+}
+function buildFeedback(a) {
+  return [
+    { icon: '🩺', name: '수면의학 전문의', role: '수면 시간 · 수면 부채', items: doctorFb(a) },
+    { icon: '🕰️', name: '생체리듬 전문가', role: '규칙성 · 취침/기상 시각', items: chronoFb(a) },
+    { icon: '🛏️', name: '수면 환경 컨설턴트', role: '조명 · 소음 · 온도', items: envFb(a) },
+    { icon: '🥗', name: '생활습관 코치', role: '카페인 · 음주 · 야식 · 스마트폰', items: lifeFb(a) },
+    { icon: '🧠', name: '수면 인지행동 상담사', role: '수면의 질 · 심리 요인', items: cbtFb(a) }
+  ];
+}
+const LV_TXT = { good: '양호', info: '참고', warn: '주의', bad: '개선 시급' };
+const LV_ORD = { bad: 0, warn: 1, info: 2, good: 3 };
+
+/* ===================== 렌더링: 측정 ===================== */
+function renderMeasure() {
+  const el = $('#tab-measure');
+  let live;
+  if (!active) {
+    live = `<h2>⏱ 실시간 수면 측정</h2>
+      <div class="clock" id="clock">${new Date().toLocaleTimeString('ko-KR', { hour12: false })}</div>
+      <p class="muted">잠자리에 들기 전 오늘의 환경을 체크하고 <b>취침 시작</b>을 누르세요. 아침에 <b>기상</b>을 누르면 수면 시간이 기록됩니다.</p>
+      ${envFields('live')}
+      <button class="btn primary big" data-action="start">😴 취침 시작</button>`;
+  } else if (!active.end) {
+    live = `<h2>⏱ 수면 측정 중…</h2>
+      <div class="clock" id="elapsed">${hms(Date.now() - active.start)}</div>
+      <p class="muted" style="text-align:center">취침 시작: ${fmtDT(active.start)}</p>
+      <div style="text-align:center">${envChips(active.env)}</div>
+      <button class="btn warn big" data-action="wake">☀️ 기상 (측정 종료)</button>
+      <button class="btn ghost big" data-action="cancel" style="margin-top:8px">측정 취소</button>
+      <p class="note">브라우저를 닫아도 측정 시작 시각은 저장됩니다. 같은 브라우저로 다시 열면 이어서 측정돼요.</p>`;
+  } else {
+    live = `<h2>☀️ 좋은 아침이에요!</h2>
+      <div class="clock" style="font-size:2rem">${fmtDur((active.end - active.start) / H)}</div>
+      <p class="muted" style="text-align:center">${fmtDT(active.start)} → ${fmtDT(active.end)}</p>
+      <p style="margin:12px 0 0"><b>오늘 아침 컨디션은 어떤가요?</b></p>
+      ${ratingHTML('liveRate')}
+      <button class="btn primary big" data-action="saveLive">💾 기록 저장</button>
+      <button class="btn ghost big" data-action="discardLive" style="margin-top:8px">기록 버리기</button>`;
+  }
+  const now = new Date(), bed = new Date(now); bed.setDate(bed.getDate() - 1); bed.setHours(23, 0, 0, 0);
+  const wk = new Date(now); wk.setHours(7, 0, 0, 0); if (wk > now) wk.setTime(now.getTime());
+  el.innerHTML = `<div class="grid2">
+    <div class="card">${live}</div>
+    <div class="card"><h2>✍️ 직접 입력</h2>
+      <p class="muted">측정을 깜빡했거나 웨어러블·메모의 수면 기록을 옮길 때 사용하세요.</p>
+      <label class="f"><span>취침 시각</span><input type="datetime-local" id="m-start" value="${toLocalInput(bed)}"></label>
+      <label class="f"><span>기상 시각</span><input type="datetime-local" id="m-end" value="${toLocalInput(wk)}"></label>
+      ${envFields('m')}
+      <b style="font-size:.9rem">아침 컨디션</b>${ratingHTML('mRate')}
+      <button class="btn primary big" data-action="addManual">➕ 기록 추가</button>
+    </div></div>
+    <div class="card"><h3>💡 측정 팁</h3>
+    <p class="muted" style="line-height:1.6;margin:0">정확한 분석을 위해 최소 <b>3일 이상</b>, 가능하면 <b>1~2주</b> 기록하세요. 아직 기록이 없다면 아래 버튼으로 예시 데이터를 불러와 분석·피드백 화면을 먼저 체험해 볼 수 있어요.</p>
+    <div class="row"><button class="btn" data-action="sample">🧪 예시 데이터 불러오기</button></div></div>`;
+}
+
+/* ===================== 렌더링: 분석 ===================== */
+function emptyHTML(n) {
+  return `<div class="card empty"><div class="em">🌙</div><p>분석하려면 선택한 기간 안에 <b>최소 3개</b>의 수면 기록이 필요해요.<br>(현재 ${n}개)</p>
+    <div class="row" style="justify-content:center"><button class="btn primary" data-tab="measure">측정하러 가기</button>
+    <button class="btn" data-action="sample">예시 데이터 불러오기</button></div></div>`;
+}
+function renderAnalysis() {
+  const el = $('#tab-analysis'), rs = periodRecords(); lastRs = rs;
+  if (rs.length < 3) { el.innerHTML = emptyHTML(rs.length); return; }
+  const a = analyze(rs), [gt, gc] = gradeOf(a.score);
+  const durCol = a.avgDur < 6 ? 'var(--bad)' : a.avgDur < 7 ? 'var(--warn)' : a.avgDur <= 9 ? 'var(--good)' : '#a78bfa';
+  const regCol = a.sdBed <= 30 ? 'var(--good)' : a.sdBed <= 60 ? 'var(--info)' : a.sdBed <= 90 ? 'var(--warn)' : 'var(--bad)';
+  const debtCol = a.debt < 2 ? 'var(--good)' : a.debt < 5 ? 'var(--warn)' : 'var(--bad)';
+  const stat = (l, v, s, c) => `<div class="stat"><div class="l">${l}</div><div class="v" style="color:${c || 'inherit'}">${v}</div><div class="s">${s}</div></div>`;
+  const factorRows = a.factors.map(f => {
+    const col = f.pct >= .5 ? 'var(--bad)' : f.pct >= .25 ? 'var(--warn)' : f.pct > 0 ? 'var(--info)' : 'var(--line)';
+    const qc = (f.qWith && f.qWithout) ? `<small>수면의 질 ${f.qWith.toFixed(1)} vs ${f.qWithout.toFixed(1)}</small>` : '';
+    return `<div class="frow"><div class="top"><span>${f.label}</span><span>${f.count}일 · ${pc(f.pct)}%</span></div>
+      <div class="bar"><div style="width:${pc(f.pct)}%;background:${col}"></div></div>${qc}</div>`;
+  }).join('');
+  const wdwe = (a.wd && a.we) ? `
+    <table><tr><th></th><th>평일(월~금 기상)</th><th>주말(토·일 기상)</th></tr>
+    <tr><td>기록 수</td><td>${a.wd.n}일</td><td>${a.we.n}일</td></tr>
+    <tr><td>평균 수면</td><td>${fmtDur(a.wd.dur)}</td><td>${fmtDur(a.we.dur)}</td></tr>
+    <tr><td>평균 취침</td><td>${fmtClock(a.wd.bed)}</td><td>${fmtClock(a.we.bed)}</td></tr></table>
+    <p class="muted" style="margin:10px 0 0">사회적 시차: <b style="color:${a.sjl >= 1.5 ? 'var(--warn)' : 'var(--good)'}">${a.sjl.toFixed(1)}시간</b>
+    <span class="note">(평일과 주말 수면 중간 시각의 차이)</span></p>`
+    : '<p class="muted">평일과 주말 기록이 모두 있어야 비교할 수 있어요.</p>';
+  el.innerHTML = `
+  <div class="summary">
+    <div class="stat scorecard"><div class="l">수면 점수</div>
+      <div class="ring" style="--p:${a.score};--c:${gc}"><span>${a.score}</span></div>
+      <div class="v" style="color:${gc};font-size:1.1rem;margin-top:8px">${gt}</div>
+      <div class="s">시간 ${a.parts.dur}/40 · 규칙 ${a.parts.reg}/25<br>컨디션 ${a.parts.qual}/20 · 환경 ${a.parts.env}/15</div></div>
+    ${stat('평균 수면 시간', fmtDur(a.avgDur), `목표 ${a.goal}시간 · ${a.n}일 분석`, durCol)}
+    ${stat('평균 취침 → 기상', `${fmtClock(a.avgBed)} → ${fmtClock(a.avgWake)}`, '평균 시각')}
+    ${stat('취침 규칙성', `±${Math.round(a.sdBed)}분`, '취침 시각 편차 (30분 이내 권장)', regCol)}
+    ${stat('수면 부채', `${a.debt.toFixed(1)}시간`, `목표 ${a.goal}시간 대비 부족 합계`, debtCol)}
+    ${stat('아침 컨디션', a.avgQ ? `${RATE_EMOJI[Math.round(a.avgQ) - 1]} ${a.avgQ.toFixed(1)}/5` : '-', '평균 주관 점수')}
+    ${stat('짧은 수면일', `${a.shortNights}일`, '6시간 미만', a.shortNights ? 'var(--warn)' : 'var(--good)')}
+  </div>
+  <div class="card"><h3>📊 일별 수면 시간</h3><div class="chartwrap"><canvas id="c1"></canvas></div>
+    <div class="legend"><span><i style="background:var(--bad)"></i>6h 미만</span><span><i style="background:var(--warn)"></i>6~7h</span>
+    <span><i style="background:var(--good)"></i>7~9h (권장)</span><span><i style="background:#a78bfa"></i>9h 초과</span><span>점선: 목표 ${a.goal}시간</span></div></div>
+  <div class="card"><h3>🕰️ 취침·기상 시간대</h3><div class="chartwrap"><canvas id="c2"></canvas></div>
+    <p class="note">막대의 시작 = 취침, 끝 = 기상. 막대 위치가 날마다 비슷할수록 규칙적인 수면입니다.</p></div>
+  <div class="grid2">
+    <div class="card"><h3>🌡️ 환경·습관 요인</h3>${factorRows}</div>
+    <div class="card"><h3>📆 평일 vs 주말</h3>${wdwe}</div>
+  </div>`;
+  drawCharts();
+}
+
+/* ===================== 차트 ===================== */
+function setupCanvas(c, h) {
+  const dpr = window.devicePixelRatio || 1, w = c.parentElement.clientWidth;
+  c.style.width = w + 'px'; c.style.height = h + 'px'; c.width = w * dpr; c.height = h * dpr;
+  const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.font = '11px system-ui,sans-serif';
+  return { g, w, h };
+}
+function rr(g, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r);
+  g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+}
+const durColor = d => d < 6 ? '#f87171' : d < 7 ? '#fbbf24' : d <= 9 ? '#4ade80' : '#a78bfa';
+function drawCharts() { drawDuration(lastRs); drawWindow(lastRs); }
+function drawDuration(rs) {
+  const c = $('#c1'); if (!c || !rs.length) return;
+  const { g, w, h } = setupCanvas(c, 260), m = { l: 38, r: 10, t: 18, b: 28 };
+  const pw = w - m.l - m.r, ph = h - m.t - m.b, durs = rs.map(dur);
+  const maxY = Math.max(12, Math.ceil(Math.max(...durs) + 1)), y = v => m.t + ph * (1 - v / maxY);
+  g.strokeStyle = '#2d335e'; g.fillStyle = '#9aa0c8'; g.textAlign = 'right'; g.textBaseline = 'middle'; g.lineWidth = 1;
+  for (let v = 0; v <= maxY; v += 2) { g.beginPath(); g.moveTo(m.l, y(v)); g.lineTo(w - m.r, y(v)); g.stroke(); g.fillText(v + 'h', m.l - 6, y(v)); }
+  g.fillStyle = 'rgba(74,222,128,.12)'; g.fillRect(m.l, y(9), pw, y(7) - y(9));
+  g.setLineDash([5, 4]); g.strokeStyle = '#7c8cff'; g.beginPath(); g.moveTo(m.l, y(settings.goal)); g.lineTo(w - m.r, y(settings.goal)); g.stroke(); g.setLineDash([]);
+  const n = rs.length, slot = pw / n, bw = Math.min(38, slot * .66), step = Math.ceil(n / 14);
+  rs.forEach((r, i) => {
+    const d = durs[i], x = m.l + slot * i + (slot - bw) / 2;
+    g.fillStyle = durColor(d); rr(g, x, y(d), bw, y(0) - y(d), 5); g.fill();
+    g.textAlign = 'center';
+    if (i % step === 0) { g.fillStyle = '#9aa0c8'; g.textBaseline = 'top'; g.fillText(md(r.end), x + bw / 2, h - m.b + 8); }
+    if (n <= 16) { g.fillStyle = '#eef0ff'; g.textBaseline = 'bottom'; g.fillText(d.toFixed(1), x + bw / 2, y(d) - 3); }
+  });
+}
+function drawWindow(rs) {
+  const c = $('#c2'); if (!c || !rs.length) return;
+  const { g, w, h } = setupCanvas(c, 290), m = { l: 46, r: 10, t: 14, b: 28 };
+  const pw = w - m.l - m.r, ph = h - m.t - m.b;
+  const st = rs.map(bedH), en = rs.map((r, i) => st[i] + dur(r));
+  const lo = Math.floor(Math.min(...st)) - 1, hi = Math.ceil(Math.max(...en)) + 1, y = v => m.t + ph * (v - lo) / (hi - lo);
+  const stepH = (hi - lo) > 12 ? 2 : 1;
+  g.strokeStyle = '#2d335e'; g.fillStyle = '#9aa0c8'; g.textAlign = 'right'; g.textBaseline = 'middle';
+  for (let v = lo; v <= hi; v += stepH) { g.beginPath(); g.moveTo(m.l, y(v)); g.lineTo(w - m.r, y(v)); g.stroke(); g.fillText(pad(((v % 24) + 24) % 24) + ':00', m.l - 6, y(v)); }
+  const n = rs.length, slot = pw / n, bw = Math.min(34, slot * .62), step = Math.ceil(n / 14);
+  rs.forEach((r, i) => {
+    const x = m.l + slot * i + (slot - bw) / 2, grd = g.createLinearGradient(0, y(st[i]), 0, y(en[i]));
+    grd.addColorStop(0, '#5b6bff'); grd.addColorStop(1, '#a78bfa');
+    g.fillStyle = grd; rr(g, x, y(st[i]), bw, y(en[i]) - y(st[i]), 6); g.fill();
+    g.textAlign = 'center';
+    if (i % step === 0) { g.fillStyle = '#9aa0c8'; g.textBaseline = 'top'; g.fillText(md(r.end), x + bw / 2, h - m.b + 8); }
+    if (n <= 10 && bw > 26) { g.fillStyle = '#fff'; g.textBaseline = 'top'; g.fillText(fmtClock(st[i]), x + bw / 2, y(st[i]) + 3); g.textBaseline = 'bottom'; g.fillText(fmtClock(en[i]), x + bw / 2, y(en[i]) - 3); }
+  });
+}
+window.addEventListener('resize', () => { if (currentTab === 'analysis') drawCharts(); });
+
+/* ===================== 렌더링: 전문가 피드백 ===================== */
+function renderFeedback() {
+  const el = $('#tab-feedback'), rs = periodRecords();
+  if (rs.length < 3) { el.innerHTML = emptyHTML(rs.length); return; }
+  const a = analyze(rs), experts = buildFeedback(a), [gt, gc] = gradeOf(a.score);
+  const all = [];
+  experts.forEach(e => e.items.forEach(i => { if (i.level === 'bad' || i.level === 'warn') all.push({ e, i }); }));
+  all.sort((x, y) => LV_ORD[x.i.level] - LV_ORD[y.i.level]);
+  const top = all.slice(0, 3);
+  const head = a.score >= 85 ? '전반적으로 훌륭한 수면 패턴이에요. 지금 습관을 유지하세요!'
+    : a.score >= 70 ? '대체로 좋은 수면 패턴이에요. 몇 가지만 다듬으면 더 좋아집니다.'
+    : a.score >= 55 ? '무난하지만 개선 여지가 있어요. 아래 우선 과제부터 시작해 보세요.'
+    : a.score >= 40 ? '수면 패턴에 주의가 필요해요. 아래 과제를 한 가지씩 실천해 보세요.'
+    : '수면 패턴 개선이 시급해요. 작은 것부터 하나씩 바꿔 보세요.';
+  el.innerHTML = `
+  <div class="card plan"><div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+    <div class="ring" style="--p:${a.score};--c:${gc};width:84px;height:84px"><span style="width:64px;height:64px;font-size:1.4rem">${a.score}</span></div>
+    <div style="flex:1;min-width:200px"><h2 style="margin:0">종합 평가: <span style="color:${gc}">${gt}</span></h2>
+    <p class="muted" style="margin:4px 0 0">${head}</p></div></div>
+    <h3 style="margin-top:14px">🎯 우선 실천 과제</h3>
+    ${top.length ? `<ol>${top.map(({ e, i }) => `<li><span class="lv ${i.level}">${LV_TXT[i.level]}</span><b>${i.title}</b><br><small class="muted">${e.icon} ${e.name} 조언: ${i.tips[0] || i.text}</small></li>`).join('')}</ol>`
+      : '<p class="muted">주의가 필요한 항목이 없어요. 현재 패턴을 꾸준히 유지하세요! 🎉</p>'}
+  </div>
+  ${experts.map(e => `<div class="card"><div class="expert"><div class="avatar">${e.icon}</div><div><b>${e.name}</b><small>${e.role}</small></div></div>
+    ${e.items.sort((x, y) => LV_ORD[x.level] - LV_ORD[y.level]).map(i => `<div class="fb ${i.level}">
+      <h4><span class="lv ${i.level}">${LV_TXT[i.level]}</span>${i.title}</h4><p>${i.text}</p>
+      ${i.tips.length ? `<ul>${i.tips.map(t => `<li>${t}</li>`).join('')}</ul>` : ''}</div>`).join('')}</div>`).join('')}
+  <p class="note">※ 이 피드백은 입력된 기록을 바탕으로 일반적인 수면 위생 지침(성인 권장 수면 7~9시간 등)에 따라 자동 생성된 참고 정보입니다. 가상의 전문가 역할로 구성되었으며 의학적 진단·치료를 대신하지 않습니다. 코골이·수면 중 호흡 정지, 심한 낮 졸음, 2주 이상 지속되는 불면이 있다면 의료기관 상담을 권장합니다.</p>`;
+}
+
+/* ===================== 렌더링: 기록 ===================== */
+function renderHistory() {
+  const el = $('#tab-history'), rs = [...records].sort((a, b) => b.end - a.end);
+  if (!rs.length) { el.innerHTML = `<div class="card empty"><div class="em">🗂</div><p>아직 기록이 없어요.</p>
+    <div class="row" style="justify-content:center"><button class="btn primary" data-tab="measure">측정하러 가기</button><button class="btn" data-action="sample">예시 데이터 불러오기</button></div></div>`; return; }
+  el.innerHTML = `<div class="card"><h2>🗂 전체 기록 (${rs.length}개)</h2>
+    <div class="tablewrap"><table class="hist"><thead><tr><th>기상일</th><th>취침 → 기상</th><th>수면</th><th>컨디션</th><th>환경·습관</th><th></th></tr></thead><tbody>
+    ${rs.map(r => { const d = dur(r); return `<tr><td data-label="기상일">${md(r.end)}</td><td data-label="취침 → 기상">${fmtDT(r.start)} → ${fmtDT(r.end).split(' ')[1]}</td>
+      <td data-label="수면" style="color:${durColor(d)};font-weight:700">${fmtDur(d)}</td><td data-label="컨디션">${r.quality ? RATE_EMOJI[r.quality - 1] : '-'}</td>
+      <td data-label="환경·습관">${envChips(r.env)}</td><td><button class="btn ghost" data-action="del" data-id="${r.id}">삭제</button></td></tr>`; }).join('')}
+    </tbody></table></div>
+    <div class="row"><button class="btn" data-action="csv">⬇ CSV 내보내기</button><button class="btn" data-action="json">⬇ JSON 백업</button>
+    <button class="btn danger" data-action="clear">전체 삭제</button></div></div>`;
+}
+
+/* ===================== 예시 데이터 / 내보내기 ===================== */
+function makeSample() {
+  let seed = 11; const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+  const today = new Date(); today.setHours(0, 0, 0, 0); const out = [];
+  for (let i = 13; i >= 0; i--) {
+    const day = new Date(today); day.setDate(day.getDate() - i);
+    const we = day.getDay() === 0 || day.getDay() === 6;
+    const bedMin = (we ? 90 : 20) + (rnd() - .4) * 90, wakeMin = (we ? 570 : 390) + (rnd() - .5) * 50;
+    const end = new Date(day).getTime() + wakeMin * 6e4, start = new Date(day).getTime() + bedMin * 6e4;
+    if (end > Date.now()) continue;
+    const lamp = rnd() < .55;
+    const env = { light: lamp ? 'lamp' : (rnd() < .2 ? 'dim' : 'dark'), noise: rnd() < .2 ? 'mid' : 'quiet', temp: rnd() < .25 ? 'hot' : 'ok',
+      screenBefore: rnd() < .7, caffeine: rnd() < .35, alcohol: we && rnd() < .5, lateMeal: rnd() < .3 };
+    const d = (end - start) / H;
+    const q = clamp(Math.round(3.6 - (lamp ? .9 : 0) - (d < 6.5 ? .6 : 0) - (env.alcohol ? .4 : 0) + (rnd() - .5)), 1, 5);
+    out.push({ id: Date.now() + i, start, end, quality: q, env });
+  }
+  return out;
+}
+function download(name, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type })), a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 500);
+}
+
+/* ===================== 이벤트 ===================== */
+const actions = {
+  start() { active = { start: Date.now(), env: readEnv('live') }; store.set('active', active); renderMeasure(); toast('측정을 시작했어요. 편안한 밤 되세요 🌙'); },
+  wake() {
+    if (Date.now() - active.start < 5 * 6e4) { toast('측정 시간이 너무 짧아요. (5분 미만)'); return; }
+    active.end = Date.now(); store.set('active', active); renderMeasure();
+  },
+  cancel() { if (confirm('측정을 취소할까요? 기록은 저장되지 않습니다.')) { active = null; store.set('active', null); renderMeasure(); } },
+  saveLive() {
+    const q = +$('#liveRate').dataset.value || 0;
+    if (addRecord(active.start, active.end, q, active.env)) { active = null; store.set('active', null); toast('수면 기록을 저장했어요 ✅'); renderMeasure(); }
+  },
+  discardLive() { if (confirm('이 기록을 버릴까요?')) { active = null; store.set('active', null); renderMeasure(); } },
+  addManual() {
+    const s = new Date($('#m-start').value).getTime(), e = new Date($('#m-end').value).getTime();
+    if (isNaN(s) || isNaN(e)) { toast('취침·기상 시각을 입력해 주세요.'); return; }
+    if (addRecord(s, e, +$('#mRate').dataset.value || 0, readEnv('m'))) { toast('기록을 추가했어요 ✅'); renderMeasure(); }
+  },
+  sample() {
+    if (records.length && !confirm('기존 기록에 예시 데이터를 추가할까요?')) return;
+    records = records.concat(makeSample()).sort((a, b) => a.end - b.end); saveRecords(); toast('예시 데이터를 불러왔어요 🧪'); showTab('analysis');
+  },
+  del(btn) { records = records.filter(r => String(r.id) !== btn.dataset.id); saveRecords(); renderHistory(); },
+  clear() { if (confirm('모든 기록을 삭제할까요? 되돌릴 수 없습니다.')) { records = []; saveRecords(); renderHistory(); toast('모두 삭제했어요.'); } },
+  json() { download('sleep-records.json', JSON.stringify(records, null, 2), 'application/json'); },
+  csv() {
+    const rows = [['기상일', '취침', '기상', '수면시간(h)', '컨디션(1-5)', '조명', '소음', '온도', '취침전폰', '카페인', '음주', '야식']];
+    records.forEach(r => { const e = r.env || {}; rows.push([md(r.end), fmtDT(r.start), fmtDT(r.end), dur(r).toFixed(2), r.quality || '', e.light, e.noise, e.temp, e.screenBefore ? 'Y' : '', e.caffeine ? 'Y' : '', e.alcohol ? 'Y' : '', e.lateMeal ? 'Y' : '']); });
+    download('sleep-records.csv', '\ufeff' + rows.map(r => r.join(',')).join('\n'), 'text/csv');
+  }
+};
+document.addEventListener('click', e => {
+  const rate = e.target.closest('[data-rate]');
+  if (rate) { const box = rate.parentElement; box.dataset.value = rate.dataset.rate; [...box.children].forEach(b => b.classList.toggle('sel', b === rate)); return; }
+  const tab = e.target.closest('[data-tab]'); if (tab) { showTab(tab.dataset.tab); return; }
+  const act = e.target.closest('[data-action]'); if (act && actions[act.dataset.action]) actions[act.dataset.action](act);
+});
+function render() { ({ measure: renderMeasure, analysis: renderAnalysis, feedback: renderFeedback, history: renderHistory })[currentTab](); }
+function showTab(name) {
+  currentTab = name;
+  document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', s.id === 'tab-' + name));
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+  render(); window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+/* 설정 + 기기 감지(휴대폰/태블릿/PC) */
+function detectDevice() {
+  const w = window.innerWidth, smallScreen = Math.min(screen.width, screen.height) < 600;
+  if (w < 640 || (smallScreen && matchMedia('(pointer:coarse)').matches)) return 'phone';
+  return w < 1024 ? 'tablet' : 'desktop';
+}
+function applyDevice() {
+  const dev = (settings.device && settings.device !== 'auto') ? settings.device : detectDevice();
+  const root = document.documentElement, changed = root.dataset.device !== dev;
+  root.dataset.device = dev; return changed;
+}
+applyDevice();
+(function initSettings() {
+  const g = $('#goal'); for (let v = 6; v <= 10; v += .5) g.insertAdjacentHTML('beforeend', `<option value="${v}">${v}시간</option>`);
+  g.value = settings.goal; $('#period').value = settings.period; $('#device').value = settings.device || 'auto';
+  g.onchange = () => { settings.goal = +g.value; store.set('settings', settings); render(); };
+  $('#period').onchange = e => { settings.period = +e.target.value; store.set('settings', settings); render(); };
+  $('#device').onchange = e => {
+    settings.device = e.target.value; store.set('settings', settings); applyDevice();
+    toast('화면 모드를 바꿨어요');
+    if (currentTab === 'analysis') requestAnimationFrame(render);   // 차트 크기 다시 계산
+  };
+})();
+/* 화면 크기·회전 변화 대응 */
+let lastW = window.innerWidth, rzTimer;
+function onResize() {
+  clearTimeout(rzTimer);
+  rzTimer = setTimeout(() => {
+    if (window.innerWidth === lastW) return;   // 주소창 표시/숨김으로 인한 높이 변화는 무시
+    lastW = window.innerWidth; applyDevice();
+    if (currentTab === 'analysis') render();   // 차트 다시 그리기
+  }, 150);
+}
+window.addEventListener('resize', onResize);
+window.addEventListener('orientationchange', onResize);
+/* 실시간 시계 */
+setInterval(() => {
+  const c = $('#clock'); if (c) c.textContent = new Date().toLocaleTimeString('ko-KR', { hour12: false });
+  const el = $('#elapsed'); if (el && active && !active.end) el.textContent = hms(Date.now() - active.start);
+}, 1000);
+showTab('measure');
+</script>
+</body>
+</html>
